@@ -43,10 +43,12 @@ class GithubCommitLogger < Slogger
     end
     @log.info("Logging Github activity for #{config['github_user']}")
     begin
-      url = URI.parse "https://api.github.com/users/#{config['github_user']}/events?access_token=#{config['github_token']}"
+      url = URI.parse "https://api.github.com/users/#{config['github_user']}/events"
 
-      res = Net::HTTP.start(url.host, use_ssl: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) do |http|
-        http.get url.request_uri, 'User-Agent' => 'Slogger'
+      req = Net::HTTP::Get.new(url)
+      req.basic_auth("#{config['github_user']}", "#{config['github_token']}")
+      res = Net::HTTP.start(url.host, url.port, :use_ssl => true) do |http|
+        http.request(req)
       end
 
     rescue Exception => e
