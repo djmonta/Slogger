@@ -288,9 +288,10 @@ JAVASCRIPT
     raw_timing_output_file = "/tmp/timing_output"
     filtered_output_file = "/tmp/processed_output"
 
-    date_for_applescript = date_from.strftime("%A, %B %-e, %Y at 00:00") # e.g.   "Monday, February 9, 2015"
+    date_from_applescript = date_from.strftime("%Y-%m-%d 00:00") # e.g.   "Monday, February 9, 2015"
+    date_to_applescript = date_from.strftime("%Y-%m-%d 23:59")
 
-    get_whole_day_from_timing(raw_timing_output_file, date_for_applescript)
+    get_whole_day_from_timing(raw_timing_output_file, date_from_applescript, date_to_applescript)
 
     @log.debug("From #{raw_timing_output_file}, extracting hours from #{from} to #{to}: ")
 
@@ -368,26 +369,44 @@ JAVASCRIPT
     system 'osascript', *script.split(/\n/).map { |line| ['-e', line] }.flatten
   end
 
-  def get_whole_day_from_timing(temp_file, date)
+  def get_whole_day_from_timing(temp_file, date_from, date_to)
     if (File.exists?(temp_file)) then
       File.delete(temp_file)
     end
 
-    @log.debug "Timing: exporting the whole of "+date+ " to "+temp_file
-    script =<<"APPLESCRIPT"
-      set dateString to date "#{date}"
-      tell application "Timing"
-        set ex to make new export
-
-        set first day of ex to dateString
-        set project names of ex to "All Activities"
-        set last day of ex to dateString
-        set export mode of ex to raw
-
-        set duration format of ex to seconds
-        set pretty print json of ex to true
-        set should exclude short entries of ex to true
-        save export ex to "#{temp_file}"
+    @log.debug "Timing: exporting the whole of "+date_from+ " to "+temp_file
+    script=<<"APPLESCRIPT"
+      set dateFrom to date "#{date_from}"
+      set dateTo to date "#{date_to}"
+      
+      tell application "TimingHelper"
+        set reportSettings to make new report settings
+        set exportSettings to make new export settings
+        
+        get properties of reportSettings
+        
+        tell reportSettings
+          set first grouping mode to by day
+          set second grouping mode to by project
+          set app usage included to true
+          set application info included to true
+          set timespan info included to true
+        end tell
+        
+        tell exportSettings
+          set duration format to seconds
+          
+          set file format to JSON
+          
+          set short entries included to false
+        end tell
+        
+        save report with report settings reportSettings export settings exportSettings between dateFrom and dateTo to "#{temp_file}"
+        
+        -- these commands are required to avoid accumulating old settings (and thus leaking memory)
+        delete reportSettings
+        delete exportSettings
+        
       end tell
 APPLESCRIPT
 #        set duration format of ex to hhmmss

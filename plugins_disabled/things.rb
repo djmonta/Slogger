@@ -54,7 +54,7 @@ class ThingsLogger < Slogger
 
 
         set completedItems to ""
-        tell application id "com.culturedcode.Things"
+        tell application id "com.culturedcode.ThingsMac"
 
           -- Move all completed items to Logbook
           log completed now
